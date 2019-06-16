@@ -24,7 +24,12 @@ namespace dwukolejka
                 Task t = new Task(() =>
                 {
                     int spn = rnd.Next(500, 5000);
+                    sw.Reset();
+                    sw.Start();
                     Thread.Sleep(spn);
+                    sw.Stop();
+                    Console.WriteLine($"Task #{Task.CurrentId} processed in : {sw.ElapsedMilliseconds/1000f}s");
+          
                 });
 
                 if (rnd.Next(0,2) == 1)
@@ -52,35 +57,57 @@ namespace dwukolejka
             {
                 Console.WriteLine($"Task #{t.Id}");
             }
-
+            Console.WriteLine($"HP queue counts : {hp.Count()} of Tasks at the beggining.");
+            Console.WriteLine($"LP queue counts : {lp.Count()} of Tasks at the beggining.");
             Console.WriteLine("Running queues...");
-            int hpLoop = hp.Count();
-
             Stopwatch swhp = new Stopwatch();
+            Stopwatch swcp = new Stopwatch();
             swhp.Start();
-                for (int i = 0; i < hpLoop; i++)
+            swcp.Start();
+            int counter = 0;
+            while (hp.Count() > 0)
                 {
-                    var task = hp.Dequeue();
-                    sw.Reset();
-                    sw.Start();
-                    task.Start();
-                    task.Wait();
-                    sw.Stop();
-                    Console.WriteLine($"Task #{Task.CurrentId} processed in : {sw.ElapsedMilliseconds / 1000f}s");
-                }
+                    
+                    if (swcp.ElapsedMilliseconds/1000f > 10 )
+                    {
+                    Console.WriteLine($"changing queue for Task#{hp.First().Id}");
 
-            int lpLoop = lp.Count();
-            for (int i = 0; i < lpLoop; i++)
+                    //lp.Enqueue(hp.Dequeue());
+
+                    var items = lp.ToArray();
+                    lp.Clear();
+                    lp.Enqueue(hp.Dequeue());
+                    foreach (var item in items) lp.Enqueue(item);
+                        
+                    swcp.Restart();
+                    }
+                    else
+                    {
+                        var task = hp.Dequeue();
+                        task.Start();
+                        task.Wait();
+                        counter++;
+                    }
+ 
+                }
+            swhp.Stop();
+            Console.WriteLine($"Number of processed tasks in hp: {counter}");
+            Console.WriteLine($"Total time of procesing tasks of hp : {swhp.ElapsedMilliseconds/1000f}");
+            Console.WriteLine($"Average time of procesing tasks of hp : {swhp.ElapsedMilliseconds/1000f/counter}");
+            counter = 0;
+            Stopwatch swlp = new Stopwatch();
+            swlp.Start();
+            while (lp.Count() > 0)
             {
                 var task = lp.Dequeue();
-                sw.Reset();
-                sw.Start();
                 task.Start();
                 task.Wait();
-                sw.Stop();
-                Console.WriteLine($"Task #{Task.CurrentId} processed in : {sw.ElapsedMilliseconds / 1000f}s");
+                counter++;
             }
-
+            swlp.Stop();
+            Console.WriteLine($"Number of processed tasks in lp: {counter}");
+            Console.WriteLine($"Total time of procesing tasks of lp : {swlp.ElapsedMilliseconds / 1000f}");
+            Console.WriteLine($"Average time of procesing tasks of lp : {swlp.ElapsedMilliseconds / 1000f / counter}");
 
 
             Console.ReadKey();
